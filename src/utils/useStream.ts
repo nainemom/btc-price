@@ -20,7 +20,7 @@ export const useStream = <T, R>(
         if (message) {
           setData((p) => {
             if (p.includes(message)) return p;
-            return [...p.slice(-1 * messageHistory.current - 1), message];
+            return [...p.slice(-1 * messageHistory.current + 1), message];
           });
         }
       } catch (_e) {

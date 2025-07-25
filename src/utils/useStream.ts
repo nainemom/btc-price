@@ -1,36 +1,45 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import { useEffectOnce } from 'react-use';
 import useWebSocket, { ReadyState } from 'react-use-websocket';
 
-export const useStream = <T, R>(
+export const useStream = <T>(
   url: string,
-  config: {
-    messageHistory: number;
-    formatter: (message: R) => T;
+  {
+    size,
+    formatter,
+    initialData = () => Promise.resolve([]),
+  }: {
+    size: number;
+    formatter: (message: never) => T | null;
+    initialData?: () => Promise<T[]>;
   },
 ) => {
   const [data, setData] = useState<T[]>([]);
-  const messageHistory = useRef(config.messageHistory);
-  const formatter = useRef(config.formatter);
+
+  useEffectOnce(() => {
+    initialData()
+      .catch(() => data)
+      .then((resp) => {
+        setData((p) => (p.length < resp.length ? resp : p));
+      });
+  });
 
   const { readyState } = useWebSocket<T>(url, {
     shouldReconnect: () => true,
+    disableJson: true,
     onMessage: (e) => {
-      try {
-        const message = formatter.current(JSON.parse(e.data));
-        if (message) {
-          setData((p) => {
-            if (p.includes(message)) return p;
-            return [...p.slice(-1 * messageHistory.current + 1), message];
-          });
-        }
-      } catch (_e) {
-        console.error('Error parsing message:', e.data);
-      }
+      const item = formatter(e.data as never);
+      if (item === null) return;
+      setData((p) => {
+        if (p.includes(item)) return p;
+        return [...p.slice(-1 * size + 1), item];
+      });
     },
   });
 
   return {
     data,
     isConnected: readyState === ReadyState.OPEN,
+    isPending: data.length !== size,
   };
 };

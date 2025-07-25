@@ -22,6 +22,7 @@ export function RealtimePriceChart({
   const updatePeriod = useUpdatePeriod(data, 1000);
 
   const root = useRef<SVGSVGElement>(null);
+  const yDomainRef = useRef<[number, number]>([0, 0]); // Initial dummy values
 
   useEffect(() => {
     if (!root.current || data.length === 0) return;
@@ -36,13 +37,18 @@ export function RealtimePriceChart({
 
     const lastData = data[data.length - 1];
 
-    const y = d3
-      .scaleLinear()
-      .domain([
+    if (
+      lastData.price > yDomainRef.current[1] ||
+      lastData.price < yDomainRef.current[0]
+    ) {
+      yDomainRef.current = [
         (d3.min(data, (d) => d.price) ?? 0) * 0.999,
         (d3.max(data, (d) => d.price) ?? 0) * 1.001,
-      ])
-      .range([height, 0]);
+      ];
+      console.log('Updated y-domain:', yDomainRef.current);
+    }
+
+    const y = d3.scaleLinear().domain(yDomainRef.current).range([height, 0]);
 
     const line = d3
       .line<PriceDataPoint>()

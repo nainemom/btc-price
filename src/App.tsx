@@ -8,7 +8,7 @@ import { useStream } from './utils/useStream';
 const base = 'pengu';
 const quote = 'usdt';
 const interval = '1s';
-const limit = 100;
+const limit = 50;
 
 function App() {
   const { width, height } = useWindowSize();

@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { useEffectOnce } from 'react-use';
+import { useEffect, useRef, useState } from 'react';
 import useWebSocket, { ReadyState } from 'react-use-websocket';
 
 export const useStream = <T>(
@@ -15,14 +14,17 @@ export const useStream = <T>(
   },
 ) => {
   const [data, setData] = useState<T[]>([]);
+  const inited = useRef(false);
 
-  useEffectOnce(() => {
+  useEffect(() => {
+    if (inited.current) return;
+    inited.current = true;
     initialData()
-      .catch(() => data)
+      .catch(() => [])
       .then((resp) => {
         setData((p) => (p.length < resp.length ? resp : p));
       });
-  });
+  }, [initialData]);
 
   const { readyState } = useWebSocket<T>(url, {
     shouldReconnect: () => true,

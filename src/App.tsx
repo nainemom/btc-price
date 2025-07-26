@@ -8,15 +8,15 @@ import { useStream } from './utils/useStream';
 const base = 'btc';
 const quote = 'usdt';
 const interval = '1s';
-const limit = 50;
 const fakeTolerance = () => Math.random() * 20 - 10;
 
 function App() {
   const { width, height } = useWindowSize();
+  const size = Math.floor(width / 35);
   const { data, isConnected, isPending, isTrusted } = useStream<PriceDataPoint>(
     `wss://stream.binance.com:9443/ws/${base.toLowerCase()}${quote.toLowerCase()}@kline_${interval}`,
     {
-      size: limit,
+      size,
       trustCheck: (messages) => messages.length > 2,
       formatter: (message) => {
         try {
@@ -36,7 +36,7 @@ function App() {
       initialData: async () => {
         try {
           const res = await fetch(
-            `https://api.binance.com/api/v3/klines?symbol=${base.toUpperCase()}${quote.toUpperCase()}&interval=${interval}&limit=${limit}`,
+            `https://api.binance.com/api/v3/klines?symbol=${base.toUpperCase()}${quote.toUpperCase()}&interval=${interval}&limit=${size}`,
             {
               headers: {
                 'Content-Type': 'application/json',
@@ -62,7 +62,13 @@ function App() {
   if (!isConnected || isPending || !isTrusted)
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="animate-pulse">Loading...</p>
+        <p className="animate-pulse">
+          {!isConnected
+            ? 'Connecting...'
+            : !isTrusted
+              ? 'Establishing a secure connection...'
+              : `Preparing... ${Math.ceil((data.length / size) * 100)}%`}
+        </p>
       </div>
     );
 

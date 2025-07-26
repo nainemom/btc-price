@@ -25,19 +25,21 @@ export function RealtimePriceChart({
   color: string;
 }) {
   const updatePeriod = useUpdatePeriod(data, 1000);
-
   const root = useRef<SVGSVGElement>(null);
-  const yDomainRef = useRef<[number, number]>([0, 0]); // Initial dummy values
+  const domain = useRef<[number, number]>([0, 0]);
 
   useEffect(() => {
-    if (!root.current || data.length === 0) return;
+    if (!root.current) return;
 
     const cirlceSize = 8;
+    const endMargin = width / 4;
 
-    const endMargin = width / 5;
+    const svg = d3
+      .select(root.current)
+      .attr('style', `background-color: ${backgroundColor}`)
+      .attr('width', width)
+      .attr('height', height);
 
-    const svg = d3.select(root.current);
-    svg.attr('style', `background-color: ${backgroundColor}`);
     svg.selectAll('*').remove();
 
     const x = d3
@@ -45,19 +47,17 @@ export function RealtimePriceChart({
       .domain(d3.extent(data, (d) => d.time) as [Date, Date])
       .range([0, width - endMargin]);
 
-    const lastData = data[data.length - 1];
-
     if (
-      lastData.price > yDomainRef.current[1] ||
-      lastData.price < yDomainRef.current[0]
+      (data.at(-1)?.price ?? 0) > domain.current[1] ||
+      (data.at(-1)?.price ?? 0) < domain.current[0]
     ) {
-      yDomainRef.current = [
+      domain.current = [
         (d3.min(data, (d) => d.price) ?? 0) * 0.999,
         (d3.max(data, (d) => d.price) ?? 0) * 1.001,
       ];
     }
 
-    const y = d3.scaleLinear().domain(yDomainRef.current).range([height, 0]);
+    const y = d3.scaleLinear().domain(domain.current).range([height, 0]);
 
     const line = d3
       .line<PriceDataPoint>()
@@ -65,7 +65,7 @@ export function RealtimePriceChart({
       .y((d) => y(d.price))
       .curve(d3.curveBumpX);
 
-    const g = svg.attr('width', width).attr('height', height).append('g');
+    const frame = svg.append('g');
 
     svg
       .append('defs')
@@ -75,7 +75,7 @@ export function RealtimePriceChart({
       .attr('width', width - endMargin)
       .attr('height', height);
 
-    const path = g
+    const path = frame
       .append('g')
       .attr('clip-path', 'url(#clip)')
       .append('path')
@@ -85,14 +85,15 @@ export function RealtimePriceChart({
       .attr('stroke-width', 2)
       .attr('d', line);
 
-    g.append('rect')
+    frame
+      .append('rect')
       .attr('x', x(data.at(-2)?.time ?? 0))
       .attr('y', 0)
       .attr('width', width / data.length)
       .attr('height', height)
       .attr('fill', backgroundColor);
 
-    const circle = g
+    const circle = frame
       .append('circle')
       .attr('cx', x(data.at(-2)?.time ?? 0))
       .attr('cy', y(data.at(-2)?.price ?? 0))
@@ -101,13 +102,13 @@ export function RealtimePriceChart({
       .attr('stroke-width', 2)
       .attr('fill', backgroundColor);
 
-    const fakeCircle = circle
+    const innerCircle = circle
       .clone()
       .attr('r', cirlceSize - 5)
       .attr('stroke-width', 0)
       .attr('fill', 'transparent');
 
-    const text = g
+    const text = frame
       .append('text')
       .attr('x', x(data.at(-2)?.time ?? 0) + cirlceSize + 5)
       .attr('y', y(data.at(-2)?.price ?? 0) + cirlceSize / 2)
@@ -120,7 +121,7 @@ export function RealtimePriceChart({
           minifyDecimalRepeats: true,
         })}`,
       )
-      .attr('font-size', 12)
+      .attr('font-size', 11)
       .attr('font-weight', 300)
       .attr('font-family', 'monospace');
 
@@ -130,7 +131,7 @@ export function RealtimePriceChart({
       .ease(d3.easeExpInOut)
       .attr('cy', y(data.at(-1)?.price ?? 0));
 
-    fakeCircle
+    innerCircle
       .transition()
       .duration(updatePeriod)
       .ease(d3.easeExpInOut)

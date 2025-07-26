@@ -5,23 +5,27 @@ import {
 } from './components/RealtimePriceChart';
 import { useStream } from './utils/useStream';
 
-const base = 'pengu';
+const base = 'btc';
 const quote = 'usdt';
 const interval = '1s';
 const limit = 50;
+const fakeTolerance = () => Math.random() * 20 - 10;
 
 function App() {
   const { width, height } = useWindowSize();
-  const { data } = useStream<PriceDataPoint>(
+  const { data, isConnected, isPending, isTrusted } = useStream<PriceDataPoint>(
     `wss://stream.binance.com:9443/ws/${base.toLowerCase()}${quote.toLowerCase()}@kline_${interval}`,
     {
       size: limit,
+      trustCheck: (messages) => messages.length > 2,
       formatter: (message) => {
         try {
           const parsedMessage = JSON.parse(message);
           return {
             price:
-              parseFloat(parsedMessage.k.c) + parseFloat(parsedMessage.k.o) / 2,
+              (parseFloat(parsedMessage.k.h) + parseFloat(parsedMessage.k.l)) /
+                2 +
+              fakeTolerance(),
             time: new Date(parsedMessage.E),
           };
         } catch (e) {
@@ -43,7 +47,8 @@ function App() {
           const messages = await res.json();
           // biome-ignore lint/suspicious/noExplicitAny: it doesn't matter here
           return messages.map((item: any) => ({
-            price: parseFloat(item[4]) + parseFloat(item[1]) / 2,
+            price:
+              (parseFloat(item[4]) + parseFloat(item[1])) / 2 + fakeTolerance(),
             time: new Date(item[0]),
           }));
         } catch (e) {
@@ -54,7 +59,22 @@ function App() {
     },
   );
 
-  return <RealtimePriceChart data={data} height={height} width={width} />;
+  if (!isConnected || isPending || !isTrusted)
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="animate-pulse">Loading...</p>
+      </div>
+    );
+
+  return (
+    <RealtimePriceChart
+      data={data}
+      height={height}
+      width={width}
+      backgroundColor="#000"
+      color="#fff"
+    />
+  );
 }
 
 export default App;

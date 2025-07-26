@@ -7,13 +7,16 @@ export const useStream = <T>(
     size,
     formatter,
     initialData = () => Promise.resolve([]),
+    trustCheck = () => true,
   }: {
     size: number;
     formatter: (message: never) => T | null;
     initialData?: () => Promise<T[]>;
+    trustCheck?: (messages: never[]) => boolean;
   },
 ) => {
   const [data, setData] = useState<T[]>([]);
+  const rawData = useRef<never[]>([]);
   const inited = useRef(false);
 
   useEffect(() => {
@@ -30,6 +33,7 @@ export const useStream = <T>(
     shouldReconnect: () => true,
     disableJson: true,
     onMessage: (e) => {
+      rawData.current.push(e.data as never);
       const item = formatter(e.data as never);
       if (item === null) return;
       setData((p) => {
@@ -43,5 +47,6 @@ export const useStream = <T>(
     data,
     isConnected: readyState === ReadyState.OPEN,
     isPending: data.length !== size,
+    isTrusted: trustCheck(rawData.current),
   };
 };

@@ -1,4 +1,5 @@
 import { useWindowSize } from 'react-use';
+import { Progress } from './components/Progress';
 import {
   type PriceDataPoint,
   RealtimePriceChart,
@@ -61,14 +62,24 @@ function App() {
 
   if (!isConnected || isPending || !isTrusted)
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex flex-col gap-2 items-center justify-center h-screen">
         <p className="animate-pulse">
           {!isConnected
             ? 'Connecting...'
             : !isTrusted
-              ? 'Establishing a secure connection...'
-              : `Preparing... ${Math.ceil((data.length / size) * 100)}%`}
+              ? 'Verifying...'
+              : 'Preparing...'}
         </p>
+        <Progress
+          className="w-xs max-w-3/4"
+          value={
+            !isConnected
+              ? 0
+              : !isTrusted
+                ? 0.2
+                : 0.3 + (data.length / size) * 0.7
+          }
+        />
       </div>
     );
 
